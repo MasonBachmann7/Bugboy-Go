@@ -29,7 +29,8 @@ func InitFromEnv(logger *log.Logger) *Client {
 	}
 
 	sdk.Init(sdk.Config{
-		APIKey: apiKey,
+		APIKey:   apiKey,
+		Endpoint: os.Getenv("BUGSTACK_ENDPOINT"),
 	})
 	logger.Printf("bugstack initialized")
 	return &Client{enabled: true}
