@@ -1,0 +1,11 @@
+*.exe
+*.test
+*.out
+coverage.*
+dist/
+bin/
+.tools/
+.cache/
+.env
+.env.*
+!.env.example
