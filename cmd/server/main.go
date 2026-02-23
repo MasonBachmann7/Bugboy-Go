@@ -11,13 +11,9 @@ import (
 
 	"github.com/masonbachmann7/bugboy-go/internal/bugstack"
 	"github.com/masonbachmann7/bugboy-go/internal/server"
-	"github.com/MasonBachmann7/bugstack-go"
 )
 
 func main() {
-	// BugStack error monitoring
-	bugstack.Init(os.Getenv("BUGSTACK_API_KEY"))
-
 	logger := log.New(os.Stdout, "bugboy-go ", log.LstdFlags|log.Lmicroseconds|log.LUTC)
 
 	port := os.Getenv("PORT")
