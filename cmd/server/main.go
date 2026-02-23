@@ -11,6 +11,8 @@ import (
 
 	"github.com/masonbachmann7/bugboy-go/internal/bugstack"
 	"github.com/masonbachmann7/bugboy-go/internal/server"
+
+	bugstackMW "github.com/MasonBachmann7/bugstack-go/middleware"
 )
 
 func main() {
@@ -26,7 +28,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           server.NewHandlerWithReporter(logger, bugstackClient),
+		Handler:           bugstackMW.NetHTTP(server.NewHandlerWithReporter(logger, bugstackClient)),
 		ReadHeaderTimeout: 3 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,
