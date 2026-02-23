@@ -9,10 +9,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/masonbachmann7/bugboy-go/internal/bugstack"
+	bugstack "github.com/MasonBachmann7/bugstack-go"
 	"github.com/masonbachmann7/bugboy-go/internal/server"
-
-	bugstackMW "github.com/MasonBachmann7/bugstack-go/middleware"
 )
 
 func main() {
@@ -23,12 +21,16 @@ func main() {
 		port = "8080"
 	}
 
-	bugstackClient := bugstack.InitFromEnv(logger)
-	defer bugstackClient.Flush()
+	// Initialize BugStack error monitoring
+	bugstack.Init(bugstack.Config{
+		APIKey:   os.Getenv("BUGSTACK_API_KEY"),
+		Endpoint: os.Getenv("BUGSTACK_ENDPOINT"),
+	})
+	defer bugstack.Flush()
 
 	srv := &http.Server{
 		Addr:              ":" + port,
-		Handler:           bugstackMW.NetHTTP(server.NewHandlerWithReporter(logger, bugstackClient)),
+		Handler:           server.NewHandler(logger),
 		ReadHeaderTimeout: 3 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      10 * time.Second,

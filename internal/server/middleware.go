@@ -8,6 +8,8 @@ import (
 	"runtime/debug"
 	"sync/atomic"
 	"time"
+
+	bugstack "github.com/MasonBachmann7/bugstack-go"
 )
 
 type contextKey string
@@ -41,11 +43,14 @@ func accessLogMiddleware(logger *log.Logger, next http.Handler) http.Handler {
 	})
 }
 
-func recoverPanicMiddleware(logger *log.Logger, reporter ErrorReporter, next http.Handler) http.Handler {
+func recoverPanicMiddleware(logger *log.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				reporter.CapturePanicWithRequest(recovered, r)
+				bugstack.CaptureError(fmt.Errorf("panic: %v", recovered), bugstack.WithRequest(&bugstack.RequestContext{
+					Route:  r.URL.Path,
+					Method: r.Method,
+				}))
 				requestID := requestIDFromContext(r.Context())
 				logger.Printf(
 					"panic recovered request_id=%s method=%s path=%s panic=%v stack=%s",

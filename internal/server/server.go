@@ -13,6 +13,8 @@ import (
 	"runtime/debug"
 	"strings"
 	"time"
+
+	bugstack "github.com/MasonBachmann7/bugstack-go"
 )
 
 //go:embed templates/*.html
@@ -58,21 +60,7 @@ func NewHandler(logger *log.Logger) http.Handler {
 	if logger == nil {
 		logger = log.Default()
 	}
-	reporter := reporterOrNoop(nil)
 
-	return newHandler(logger, reporter)
-}
-
-func NewHandlerWithReporter(logger *log.Logger, reporter ErrorReporter) http.Handler {
-	if logger == nil {
-		logger = log.Default()
-	}
-	reporter = reporterOrNoop(reporter)
-
-	return newHandler(logger, reporter)
-}
-
-func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 	recoverPanics := true
 	if raw := strings.TrimSpace(strings.ToLower(os.Getenv("BUGBOY_RECOVER_PANICS"))); raw == "false" || raw == "0" {
 		recoverPanics = false
@@ -84,7 +72,10 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := indexTemplate.Execute(w, pageData{Routes: bugRoutes}); err != nil {
-			reporter.CaptureErrorWithRequest(err, r)
+			bugstack.CaptureError(err, bugstack.WithRequest(&bugstack.RequestContext{
+				Route:  r.URL.Path,
+				Method: r.Method,
+			}))
 			logger.Printf("template render failed request_id=%s err=%v", requestIDFromContext(r.Context()), err)
 		}
 	})
@@ -125,7 +116,10 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		err := simulateDBQuery(ctx, 120*time.Millisecond)
 		if err != nil {
 			wrappedErr := fmt.Errorf("fetching release metadata failed: %w", err)
-			reporter.CaptureErrorWithRequest(wrappedErr, r)
+			bugstack.CaptureError(wrappedErr, bugstack.WithRequest(&bugstack.RequestContext{
+				Route:  r.URL.Path,
+				Method: r.Method,
+			}))
 			logger.Printf("application error request_id=%s route=%s err=%v", requestIDFromContext(r.Context()), r.URL.Path, wrappedErr)
 			writeJSON(w, http.StatusInternalServerError, errorResponse{
 				Error:     "database operation failed",
@@ -161,7 +155,10 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		client := &http.Client{Timeout: 200 * time.Millisecond}
 		_, err = client.Do(req)
 		if err != nil {
-			reporter.CaptureErrorWithRequest(err, r)
+			bugstack.CaptureError(err, bugstack.WithRequest(&bugstack.RequestContext{
+				Route:  r.URL.Path,
+				Method: r.Method,
+			}))
 			writeJSON(w, http.StatusBadGateway, errorResponse{
 				Error:     "upstream dependency unavailable",
 				RequestID: requestIDFromContext(r.Context()),
@@ -191,7 +188,10 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		var p payload
 		err := json.Unmarshal(raw, &p)
 		if err != nil {
-			reporter.CaptureErrorWithRequest(err, r)
+			bugstack.CaptureError(err, bugstack.WithRequest(&bugstack.RequestContext{
+				Route:  r.URL.Path,
+				Method: r.Method,
+			}))
 			writeJSON(w, http.StatusBadRequest, errorResponse{
 				Error:     "request payload invalid",
 				RequestID: requestIDFromContext(r.Context()),
@@ -217,9 +217,10 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		go func() {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					// Build a minimal request for route context (original r may be stale)
-					fakeReq, _ := http.NewRequest(method, route, nil)
-					reporter.CapturePanicWithRequest(recovered, fakeReq)
+					bugstack.CaptureError(fmt.Errorf("panic: %v", recovered), bugstack.WithRequest(&bugstack.RequestContext{
+						Route:  route,
+						Method: method,
+					}))
 					logger.Printf(
 						"background panic recovered request_id=%s panic=%v stack=%s",
 						reqID,
@@ -263,7 +264,7 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 
 	var handler http.Handler = mux
 	if recoverPanics {
-		handler = recoverPanicMiddleware(logger, reporter, handler)
+		handler = recoverPanicMiddleware(logger, handler)
 	}
 	handler = accessLogMiddleware(logger, handler)
 	handler = requestIDMiddleware(handler)
