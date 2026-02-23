@@ -5,6 +5,7 @@ package bugstack
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
@@ -47,6 +48,16 @@ func (c *Client) CaptureError(err error) {
 	sdk.CaptureError(err)
 }
 
+func (c *Client) CaptureErrorWithRequest(err error, r *http.Request) {
+	if c == nil || !c.enabled || err == nil {
+		return
+	}
+	sdk.CaptureError(err, sdk.WithRequest(&sdk.RequestContext{
+		Route:  r.URL.Path,
+		Method: r.Method,
+	}))
+}
+
 func (c *Client) CapturePanic(value any) {
 	if c == nil || !c.enabled {
 		return
@@ -56,6 +67,21 @@ func (c *Client) CapturePanic(value any) {
 		return
 	}
 	sdk.CaptureError(fmt.Errorf("panic: %v", value))
+}
+
+func (c *Client) CapturePanicWithRequest(value any, r *http.Request) {
+	if c == nil || !c.enabled {
+		return
+	}
+	reqCtx := sdk.WithRequest(&sdk.RequestContext{
+		Route:  r.URL.Path,
+		Method: r.Method,
+	})
+	if err, ok := value.(error); ok {
+		sdk.CaptureError(err, reqCtx)
+		return
+	}
+	sdk.CaptureError(fmt.Errorf("panic: %v", value), reqCtx)
 }
 
 func (c *Client) Flush() {

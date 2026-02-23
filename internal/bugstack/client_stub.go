@@ -4,6 +4,7 @@ package bugstack
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -24,6 +25,10 @@ func InitFromEnv(logger *log.Logger) *Client {
 
 func (c *Client) CaptureError(err error) {}
 
+func (c *Client) CaptureErrorWithRequest(err error, r *http.Request) {}
+
 func (c *Client) CapturePanic(value any) {}
+
+func (c *Client) CapturePanicWithRequest(value any, r *http.Request) {}
 
 func (c *Client) Flush() {}

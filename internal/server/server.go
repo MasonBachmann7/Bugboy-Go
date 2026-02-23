@@ -84,7 +84,7 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := indexTemplate.Execute(w, pageData{Routes: bugRoutes}); err != nil {
-			reporter.CaptureError(err)
+			reporter.CaptureErrorWithRequest(err, r)
 			logger.Printf("template render failed request_id=%s err=%v", requestIDFromContext(r.Context()), err)
 		}
 	})
@@ -125,7 +125,7 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		err := simulateDBQuery(ctx, 120*time.Millisecond)
 		if err != nil {
 			wrappedErr := fmt.Errorf("fetching release metadata failed: %w", err)
-			reporter.CaptureError(wrappedErr)
+			reporter.CaptureErrorWithRequest(wrappedErr, r)
 			logger.Printf("application error request_id=%s route=%s err=%v", requestIDFromContext(r.Context()), r.URL.Path, wrappedErr)
 			writeJSON(w, http.StatusInternalServerError, errorResponse{
 				Error:     "database operation failed",
@@ -161,7 +161,7 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		client := &http.Client{Timeout: 200 * time.Millisecond}
 		_, err = client.Do(req)
 		if err != nil {
-			reporter.CaptureError(err)
+			reporter.CaptureErrorWithRequest(err, r)
 			writeJSON(w, http.StatusBadGateway, errorResponse{
 				Error:     "upstream dependency unavailable",
 				RequestID: requestIDFromContext(r.Context()),
@@ -191,7 +191,7 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 		var p payload
 		err := json.Unmarshal(raw, &p)
 		if err != nil {
-			reporter.CaptureError(err)
+			reporter.CaptureErrorWithRequest(err, r)
 			writeJSON(w, http.StatusBadRequest, errorResponse{
 				Error:     "request payload invalid",
 				RequestID: requestIDFromContext(r.Context()),
@@ -212,10 +212,14 @@ func newHandler(logger *log.Logger, reporter ErrorReporter) http.Handler {
 
 	mux.HandleFunc("GET /bugs/background/panic", func(w http.ResponseWriter, r *http.Request) {
 		reqID := requestIDFromContext(r.Context())
+		route := r.URL.Path
+		method := r.Method
 		go func() {
 			defer func() {
 				if recovered := recover(); recovered != nil {
-					reporter.CapturePanic(recovered)
+					// Build a minimal request for route context (original r may be stale)
+					fakeReq, _ := http.NewRequest(method, route, nil)
+					reporter.CapturePanicWithRequest(recovered, fakeReq)
 					logger.Printf(
 						"background panic recovered request_id=%s panic=%v stack=%s",
 						reqID,

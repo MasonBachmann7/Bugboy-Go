@@ -45,7 +45,7 @@ func recoverPanicMiddleware(logger *log.Logger, reporter ErrorReporter, next htt
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if recovered := recover(); recovered != nil {
-				reporter.CapturePanic(recovered)
+				reporter.CapturePanicWithRequest(recovered, r)
 				requestID := requestIDFromContext(r.Context())
 				logger.Printf(
 					"panic recovered request_id=%s method=%s path=%s panic=%v stack=%s",
