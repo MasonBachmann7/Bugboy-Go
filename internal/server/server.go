@@ -105,7 +105,7 @@ func NewHandler(logger *log.Logger) http.Handler {
 	})
 
 	mux.HandleFunc("GET /bugs/panic/nil-map-write", func(w http.ResponseWriter, r *http.Request) {
-		var session map[string]string
+		session := make(map[string]string)
 		session["tenant"] = "demo"
 	})
 
