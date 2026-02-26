@@ -231,7 +231,7 @@ func NewHandler(logger *log.Logger) http.Handler {
 			}()
 
 			time.Sleep(25 * time.Millisecond)
-			var workers []string
+			workers := make([]string, 0)
 			_ = workers[3]
 		}()
 
