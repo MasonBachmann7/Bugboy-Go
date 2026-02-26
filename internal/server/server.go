@@ -100,8 +100,10 @@ func NewHandler(logger *log.Logger) http.Handler {
 
 	mux.HandleFunc("GET /bugs/panic/divide-by-zero", func(w http.ResponseWriter, r *http.Request) {
 		numerator := 42
-		denominator := 1
-		_ = numerator / denominator
+		denominator := 0
+		if denominator != 0 {
+			_ = numerator / denominator
+		}
 	})
 
 	mux.HandleFunc("GET /bugs/panic/nil-map-write", func(w http.ResponseWriter, r *http.Request) {
