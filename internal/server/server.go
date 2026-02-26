@@ -180,7 +180,7 @@ func NewHandler(logger *log.Logger) http.Handler {
 
 	mux.HandleFunc("GET /bugs/error/json-parse", func(w http.ResponseWriter, r *http.Request) {
 		type payload struct {
-			UserID int    `json:"user_id"`
+			UserID string `json:"user_id"`
 			Email  string `json:"email"`
 		}
 
