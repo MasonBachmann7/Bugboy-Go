@@ -155,7 +155,8 @@ func NewHandler(logger *log.Logger) http.Handler {
 		client := &http.Client{Timeout: 200 * time.Millisecond}
 		_, err = client.Do(req)
 		if err != nil {
-			bugstack.CaptureError(err, bugstack.WithRequest(&bugstack.RequestContext{
+			wrappedErr := fmt.Errorf("upstream dependency unavailable: %w", err)
+			bugstack.CaptureError(wrappedErr, bugstack.WithRequest(&bugstack.RequestContext{
 				Route:  r.URL.Path,
 				Method: r.Method,
 			}))
