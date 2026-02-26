@@ -110,7 +110,7 @@ func NewHandler(logger *log.Logger) http.Handler {
 	})
 
 	mux.HandleFunc("GET /bugs/error/db-timeout", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 40*time.Millisecond)
+		ctx, cancel := context.WithTimeout(r.Context(), 100*time.Millisecond)
 		defer cancel()
 
 		err := simulateDBQuery(ctx, 120*time.Millisecond)
@@ -277,7 +277,7 @@ func simulateDBQuery(ctx context.Context, latency time.Duration) error {
 		return nil
 	case <-ctx.Done():
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("db timeout after %s: %w", latency, ctx.Err())
+			return fmt.Errorf("db timeout after 120ms: %w", ctx.Err())
 		}
 		return fmt.Errorf("db query canceled: %w", ctx.Err())
 	}
